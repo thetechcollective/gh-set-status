@@ -34,10 +34,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        # if inputs.url is not set or is an empty string, set it to the default value
-        if [ -z "${{ inputs.url }}" ]; then
-          inputs.url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        fi
         gh api \
           --method POST \
           -H "Accept: application/vnd.github+json" \
