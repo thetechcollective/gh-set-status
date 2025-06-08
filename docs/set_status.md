@@ -3,25 +3,25 @@
 #### Used to set the some status of the current commit
 
 ## Loaction:
-`thetechcollective/workflows/.github/workflows/set_status.yml@dev_set_status`
+`thetechcollective/set_status/.github/workflows/set_status.yml@1`
 
-This is the string you apply in the `uses` clause in jobs the caller workflow.
+This is the string you apply in the `uses` clause in a job in the caller workflow.
 
-You can can append the string with `@<ref>` whre ´<ref>` is a valid commit reference of either a `sha`, `branch` or `tag`
+You can can append the string with `@<ref>` where ´<ref>` is a valid commit reference of either a `sha`, `branch` or `tag`
 
 #### Examples:
 
 **Branches**:<br/>
-`thetechcollective/workflows/.github/workflows/set_status.yml@main` 
-`thetechcollective/workflows/.github/workflows/set_status.yml@dev_set_status`
+`thetechcollective/set_status/.github/workflows/set_status.yml@main` 
+`thetechcollective/set_status/.github/workflows/set_status.yml@dev_set_status`
 
 **tags**<br/>
-`thetechcollective/workflows/.github/workflows/set_status.yml@v1`
-`thetechcollective/workflows/.github/workflows/set_status.yml@1.0.23rc`
+`thetechcollective/set_status/.github/workflows/set_status.yml@1`
+`thetechcollective/set_status/.github/workflows/set_status.yml@1.0.23rc`
 
 **shas**<br/>
-`thetechcollective/workflows/.github/workflows/set_status.yml@b63bce3`
-`thetechcollective/workflows/.github/workflows/set_status.yml@ef383c3b0f7ea7ccd4699a012cd1b7de371b367f`
+`thetechcollective/set_status/.github/workflows/set_status.yml@b63bce3`
+`thetechcollective/set_status/.github/workflows/set_status.yml@ef383c3b0f7ea7ccd4699a012cd1b7de371b367f`
 
 
 ## Args:
@@ -122,7 +122,7 @@ jobs:
     needs: verification
     permissions:
       statuses: write
-    uses: thetechcollective/workflows/.github/workflows/set_status.yml@v1
+    uses: thetechcollective/set_status/.github/workflows/set_status.yml@v1
     with:      
       state: ${{ needs.verification.outputs.state }}
       description: ${{ needs.verification.outputs.description }}
@@ -130,7 +130,7 @@ jobs:
 ```
 
 >[!NOTE]
-> 1. The `verification` job defines outputs
+> 1. The `verification` job defines `outputs`.
 > 2. The `unittest` step inside `verification` sets the values. For this to be possible the step needs an `id`
 > 3. The `set_unittest_status` must be a `job` (can not be a `step` inside a `job`)
 > 4. The `set_unittest_status` must raise the `statuses: write` permissions
