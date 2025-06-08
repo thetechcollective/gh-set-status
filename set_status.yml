@@ -1,1 +1,40 @@
 
+name: Set status
+
+on:
+  workflow_call:
+    inputs:
+      state:
+        required: true
+        type: string
+      description:
+        required: true
+        type: string
+      context:
+        required: true
+        type: string
+    secrets:
+      GITHUB_TOKEN:
+        required: true
+
+permissions:
+  statuses: write      
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+    
+    - name: Set status
+      run: |
+        gh api \
+          --method POST \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          /repos/${{ github.repository }}/statuses/${{ github.sha }} \
+          -f "state=${{ steps.get_unittest_status.outputs.status }}" \
+          -f "target_url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+          -f "description=${{ steps.get_unittest_status.outputs.description }}" \
+          -f "context=Unittest"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
