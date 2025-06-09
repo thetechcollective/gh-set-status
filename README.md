@@ -4,151 +4,28 @@
 
 GitHub supports [several approaches to reuse code and script among workflows](https://github.com/orgs/thetechcollective/discussions/43)
 
-This repo offers a _reusable workflow_ which essentially offers some sugar coating of the [commit status REST API](https://docs.github.com/en/rest/commits/statuses?apiVersion=2022-11-28#create-a-commit-status)
+This repo offers two comparable approaches to acieve the same thing: Set the commit status on a commit, as simple as possible.
 
-# `set_status.yml`
+In both cases it's essentially some sugar coating of the [commit status REST API](https://docs.github.com/en/rest/commits/statuses?apiVersion=2022-11-28#create-a-commit-status).
 
-## Loaction:
-`thetechcollective/set_status/.github/workflows/set_status.yml@1`
+- [Using a `gh` extension](docs/gh-set-status.md)
+- [Using a callable workflow](docs/set_status_yml.md)
 
-This is the string you apply in the `uses` clause in a job in the caller workflow.
+## Conslusion
 
-You can can append the string with `@<ref>` where ´<ref>` is a valid commit reference of either a `sha`, `branch` or `tag`
+The `gh` extension approach is way simpler to implemnet in a workflow `yml` file:
 
-<details><summary><b>Some pinning examples:</b></summary>
-
-**Branches**:<br/>
-`thetechcollective/set_status/.github/workflows/set_status.yml@main` 
-`thetechcollective/set_status/.github/workflows/set_status.yml@dev_set_status`
-
-**tags**<br/>
-`thetechcollective/set_status/.github/workflows/set_status.yml@1`
-`thetechcollective/set_status/.github/workflows/set_status.yml@1.0.23rc`
-
-**shas**<br/>
-`thetechcollective/set_status/.github/workflows/set_status.yml@b63bce3`
-`thetechcollective/set_status/.github/workflows/set_status.yml@ef383c3b0f7ea7ccd4699a012cd1b7de371b367f`
-</details>
-
-## Args:
-
-#### `state`
-The state of the status. 
-
-- **required**: true
-- **type**: string<br/>
-  Must be one of `error`, `failure`, `pending`, `success`<br/>
-
-#### `context`
-The name of the status, as it will be presented on the commit status
-
-- **required**: true
-- **type**: string
-
-#### `description`
-The description of the status, as it will be presented on the commit status
-
-- **required**: true
-- **type**: string
-
-#### `url`
-The URL to open in the 'details' link on the commit status.
-
-If ommitted this will be set to the link to the action that set the status
- 
-- **required**: false
-- **type**: string
-- **default**: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
-
-## Required permissions:
-
-####  `statuses: write`
-
-## Example use:
-
-Reused workflows can not run as steps within jobs, but must be declared as seperate jobs. This requires that the jobs can communicate to each other.
-
-The most typical use case would then be that you have another job run a test or verifcation and then expect that job to produce and output the arguments you pass to the `set_statys.yml` floow
-
-```yml
-on:
-  workflow_dispatch:
-  push:
-    branches: 
-      - '[0-9]*'
-
-# No special permissions defined before we need them
-permissions:
-  contents: read
-
-jobs:
-  # This job will install uv, run the unittests and output the arguments we need to set the status
-  verification:
-
-    runs-on: ubuntu-latest
-
-    # The output from this job is defiend from the step that runs the unittest
-    outputs:
-      state: ${{ steps.unittest.outputs.state }}
-      description: ${{ steps.unittest.outputs.description }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v3
-        with:
-          python-version: "3.13"
-
-      - name: Install uv and dependencies
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          uv venv
-          . .venv/bin/activate
-          uv sync --extra dev
-
-      - name: Test with pytest
-        id: unittest
-        run: |
-          . .venv/bin/activate 
-          # Dont exit if the next command fails, we want to capture the exit code
-          set +e
-          pytest --cov=. --cov-config=.coveragerc -m unittest
-          result=$?
-          set -e
-
-          if [ $result -eq 0 ]; then
-            echo "state=success" >> $GITHUB_OUTPUT
-            echo "description=All tests passed and threshold on line covearage reached" >> $GITHUB_OUTPUT
-          else
-            echo "state=failure" >> $GITHUB_OUTPUT
-            echo "description=Some tests failed or threshold on line covearage not reached" >> $GITHUB_OUTPUT
-          fi
-          exit $result
-
-  set_unittest_status:
-    needs: verification
-    if: always()
-    permissions:
-      statuses: write
-    uses: thetechcollective/set_status/.github/workflows/set_status.yml@main
-    with:      
-      state: ${{ needs.verification.outputs.state }}
-      description: ${{ needs.verification.outputs.description }}
-      context: Unittests
+```
+gh extension install thetechcollective/gh-set-status
+gh set-status success "All tests are good"
 ```
 
->[!NOTE]
-> 1. The `verification` job defines `outputs`.
-> 2. The `unittest` step inside `verification` sets the values. For this to be possible the step needs an `id`
-> 3. The `unittest` step must prevent the step from dying, even if the unittest fails (`set +e`), and it must manually capture the result and pass it on (`exit $result`)
-> 4. The `set_unittest_status` must be a `job` (can not be a `step` inside a `job`) and it must use the `if:always()` clause to ensure that status are set, even if the unittest failed.
-> 5. The `set_unittest_status` job must raise the `statuses: write` permissions
+It's imperative code as opposed to declarative code; easier to test and maintain.
 
-## Hmmm - undesired side effects
-When using a callable workflow the constraint that it must be a seperate job, it can not run as a step inside a job, calls for some verbose code, and the side effect that the `set_unittest_status` job iself will also have a status on the commit.
+The `gh` extension protocol provides an excellent package manager for small utilization scripts.
 
-<img width="576" alt="image" src="https://github.com/user-attachments/assets/289bd5be-935b-429a-9a8f-21109d9d8f4d" />
+In the current setup the script fails if it's called outside a GitHub Workflow Runne context, but it could quite easiliy be alterd to run _anywhere_ allowing developers to set commit statuse from their development envioronmetns with a simple cli.
 
-We get that 1/3 jobs succeeded this ssems both noisy, unneccsary and even kinda wrong. It's probably possible to null this status somehow, with another API call, but that just defies the entire purpose that we vant cleaner code, not more bloated code.
+See the details on [how to use it in your flow:](docs/gh-set-status.md). 
+
+
