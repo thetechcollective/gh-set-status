@@ -15,10 +15,10 @@ jobs:
       statuses: write
     uses: lakruzz/workflows/.github/workflows/mark_pending.yml@experimental
     with:
-    statuses: |
-      cspell_check
-      markdown_linter
-      ruff_check
-      pytest_with_coverage
-      some status with spaces
-      another-status
+      statuses: |
+        cspell_check
+        markdown_linter
+        ruff_check
+        pytest_with_coverage
+        some status with spaces
+        another-status
