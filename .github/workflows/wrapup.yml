@@ -7,16 +7,18 @@ on:
     branches: 
       - '[0-9]*'
 
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
 jobs:
         
   mark-pending:
-    name: Pending
+    name: Statuses
     permissions:
       statuses: write
     uses: lakruzz/workflows/.github/workflows/mark_pending.yml@experimental
     with:
-      statuses: '["one", "two", "some text"]'
+    statuses: |
+      cspell_check
+      markdown_linter
+      ruff_check
+      pytest_with_coverage
+      some status with spaces
+      another-status
