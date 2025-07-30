@@ -1,0 +1,24 @@
+name: Wrapup
+# This workflow is triggered on push to branches that begins with a number (issue-branches)
+# It's designed to support the wrapup process in thetechcollective/gh-tt GitHub CLI extension
+on:
+  workflow_dispatch:
+  push:
+    branches: 
+      - '[0-9]*'
+
+jobs:
+        
+  mark-pending:
+    name: Statuses
+    permissions:
+      statuses: write
+    uses: lakruzz/workflows/.github/workflows/mark_pending.yml@experimental
+    with:
+      statuses: |
+        cspell_check
+        markdown_linter
+        ruff_check
+        pytest_with_coverage
+        some status with spaces
+        another-status
