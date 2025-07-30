@@ -19,4 +19,4 @@ jobs:
       statuses: write
     uses: lakruzz/workflows/.github/workflows/mark_pending.yml@experimental
     with:
-      description: '["one", "two", "some text"]'
+      statuses: '["one", "two", "some text"]'
