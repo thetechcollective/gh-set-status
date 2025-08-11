@@ -9,16 +9,9 @@ on:
 
 jobs:
         
-  mark-pending:
-    name: Statuses
+  
+  inherit-statuses:
+    name: Inherit statuses
     permissions:
       statuses: write
-    uses: lakruzz/workflows/.github/workflows/mark_pending.yml@experimental
-    with:
-      statuses: |
-        cspell_check
-        markdown_linter
-        ruff_check
-        pytest_with_coverage
-        some status with spaces
-        another-status
+    uses: ./.github/workflows/inherit_statuses.yml     
