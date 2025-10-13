@@ -148,6 +148,8 @@ inherit_statuses() {
   fi
 
   # Iterate latest statuses per context (as provided by the combined status endpoint)
+  # Track if all inherited statuses are 'success'
+  local ALL_SUCCESS=true
   declare -A SEEN
   while IFS=$'\t' read -r STATE DESCRIPTION CONTEXT TARGET_URL; do
     [[ -z "$CONTEXT" ]] && continue
@@ -156,28 +158,43 @@ inherit_statuses() {
     fi
     SEEN[$CONTEXT]=1
 
+    # Check if this status is not 'success'
+    if [[ "$STATE" != "success" ]]; then
+      ALL_SUCCESS=false
+      echo "  ⚠️ $CONTEXT: $STATE" >&2
+    fi
+
     local URL="$TARGET_URL"
     if [[ -z "$URL" ]]; then
       URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
     fi
 
     echo "  inheriting: context='$CONTEXT' state='$STATE'"
-    set -x
-    gh api \
-      --method POST \
-      -H "Accept: application/vnd.github+json" \
-      -H "X-GitHub-Api-Version: 2022-11-28" \
-      "/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
-      -f "state=$STATE" \
-      -f "target_url=$URL" \
-      -f "description=$DESCRIPTION" \
-      -f "context=$CONTEXT"
-    { set +x; } 2>/dev/null
+    {
+      set -x
+      gh api \
+        --method POST \
+        -H "Accept: application/vnd.github+json" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        "/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+        -f "state=$STATE" \
+        -f "target_url=$URL" \
+        -f "description=$DESCRIPTION" \
+        -f "context=$CONTEXT"
+      set +x
+    } 2>&1
   done < <(gh api \
     -H "Accept: application/vnd.github+json" \
     -H "X-GitHub-Api-Version: 2022-11-28" \
     "/repos/$GITHUB_REPOSITORY/commits/$SRC_REF/status" \
     --jq '.statuses[] | [ .state, (.description // ""), .context, (.target_url // "") ] | @tsv')
+
+  # Return appropriate exit code based on inherited statuses
+  if [[ "$ALL_SUCCESS" == "true" ]]; then
+    return 0
+  else
+    return 1
+  fi
 }
 
 set_status_cmd() {
@@ -209,17 +226,19 @@ set_status_cmd() {
   echo "  context:     '$CONTEXT'"
   echo "  url:         '$TARGET_URL'"
 
-  set -x
-  gh api \
-    --method POST \
-    -H "Accept: application/vnd.github+json" \
-    -H "X-GitHub-Api-Version: 2022-11-28" \
-    "/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
-    -f "state=$STATE" \
-    -f "target_url=$TARGET_URL" \
-    -f "description=$DESCRIPTION" \
-    -f "context=$CONTEXT"
-  { set +x; } 2>/dev/null
+  {
+    set -x
+    gh api \
+      --method POST \
+      -H "Accept: application/vnd.github+json" \
+      -H "X-GitHub-Api-Version: 2022-11-28" \
+      "/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+      -f "state=$STATE" \
+      -f "target_url=$TARGET_URL" \
+      -f "description=$DESCRIPTION" \
+      -f "context=$CONTEXT"
+    set +x
+  } 2>&1
 }
 
 # --- Main ---
@@ -228,6 +247,7 @@ check_env_or_die
 case "$CMD" in
   inherit)
     inherit_statuses "$1"
+    exit $?
     ;;
   *)
     # In "set" mode, the first arg is actually the state
