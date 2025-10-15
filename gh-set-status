@@ -130,19 +130,31 @@ inherit_statuses() {
   echo "  to commit:    '$GITHUB_SHA'"
   echo "  repository:   '$GITHUB_REPOSITORY'"
 
+  echo "Fetching statuses from ref \`$SRC_REF\`..."                   >> $GITHUB_STEP_SUMMARY
+  echo "Read from the commit message on this commit  \`$GITHUB_SHA\`" >> $GITHUB_STEP_SUMMARY
+
   # Check there are statuses to inherit
   local STAT_COUNT
-  STAT_COUNT=$(gh api \
+  local api_result
+  set +e
+  api_result=$(gh api \
     -H "Accept: application/vnd.github+json" \
     -H "X-GitHub-Api-Version: 2022-11-28" \
     "/repos/$GITHUB_REPOSITORY/commits/$SRC_REF/status" \
-    --jq '.statuses | length' 2>/dev/null) || true
+    --jq '.statuses | length' 2>&1)
+  local exit_code=$?
+  set -e
 
-  if [[ -z "$STAT_COUNT" ]]; then
-    echo "❌ Failed to fetch statuses from ref '$SRC_REF'."
+  echo $api_result
+
+  if [[ $exit_code -ne 0 ]] || [[ -z "$api_result" ]]; then
+    echo "❌ Failed to fetch statuses from ref '$SRC_REF'." >> $GITHUB_STEP_SUMMARY
+    echo '```' >> $GITHUB_STEP_SUMMARY
+    echo "API result: $api_result" >> $GITHUB_STEP_SUMMARY
+    echo '```' >> $GITHUB_STEP_SUMMARY
     exit 1
   fi
-  if (( STAT_COUNT == 0 )); then
+  if (( api_result == 0 )); then
     echo "ℹ️ No statuses found on ref '$SRC_REF'. Nothing to inherit."
     return 0
   fi
