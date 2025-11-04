@@ -71,7 +71,7 @@ gh set-status inherit feature-branch
 
 gh set-status inherit abc1234
 
-See plenty of more examples in the workflows in https://github.com/lakruzz/workflows
+See plenty of more examples in the workflows in https://github.com/thetechcollective/workflows
 
 EOF
 )
